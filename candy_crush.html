@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Candy Crush Sugar Delight</title>
+  <style>
+    :root {
+      --board-size: 8;
+      --cell-size: 64px;
+      --cell-gap: 8px;
+      --board-bg: #2d1345;
+      --font-family: 'Fredoka', 'Quicksand', 'Nunito', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    @media (max-width: 600px) {
+      :root {
+        --cell-size: 40px;
+        --cell-gap: 4px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      :root {
+        --cell-size: 34px;
+        --cell-gap: 3px;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at 50% 20%, #ff7eb3 0%, #7b2ff7 45%, #230b42 100%);
+      font-family: var(--font-family);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-x: hidden;
+      padding: 12px;
+      position: relative;
+    }
+
+    /* Floating candy background sparkles */
+    .bg-candy {
+      position: fixed;
+      pointer-events: none;
+      opacity: 0.18;
+      animation: floatSlow 14s infinite ease-in-out alternate;
+      z-index: 0;
+    }
+
+    @keyframes floatSlow {
+      0% { transform: translateY(0px) rotate(0deg) scale(1); }
+      50% { transform: translateY(-30px) rotate(45deg) scale(1.1); }
+      100% { transform: translateY(15px) rotate(-30deg) scale(0.95); }
+    }
+
+    /* Game Header & Top HUD */
+    .game-container {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 640px;
+    }
+
+    .title-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      background: linear-gradient(180deg, #fff080 0%, #ff6b6b 50%, #ff2a85 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+      text-transform: uppercase;
+    }
+
+    .hud-card {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 2px solid rgba(255, 255, 255, 0.28);
+      border-radius: 20px;
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      margin-bottom: 12px;
+    }
+
+    .hud-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+    }
+
+    .hud-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: #ffd8ec;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .hud-value {
+      font-size: 1.45rem;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    }
+
+    .hud-value.highlight {
+      color: #ffe600;
+      transform: scale(1.2);
+      transition: transform 0.15s ease-out;
+    }
+
+    .target-bar-wrap {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .target-bar-track {
+      width: 100%;
+      height: 14px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+    }
+
+    .target-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ff007f, #ffe600, #00f2fe);
+      border-radius: 10px;
+      transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 0 12px rgba(255, 230, 0, 0.75);
+    }
+
+    /* Action bar controls */
+    .controls-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 0 4px;
+    }
+
+    .btn {
+      background: linear-gradient(180deg, #ff85c2 0%, #ff3b81 100%);
+      border: 2px solid #ffffff;
+      border-radius: 14px;
+      color: #fff;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(255, 59, 129, 0.4), inset 0 2px 2px rgba(255, 255, 255, 0.5);
+      transition: transform 0.1s ease, filter 0.2s ease;
+      touch-action: manipulation;
+    }
+
+    .btn:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(2px) scale(0.97);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(180deg, #4dc9ff 0%, #0084ff 100%);
+      box-shadow: 0 4px 12px rgba(0, 132, 255, 0.4), inset 0 2px 2px rgba(255, 255, 255, 0.5);
+    }
+
+    .btn-icon-only {
+      padding: 8px 10px;
+      font-size: 1.1rem;
+    }
+
+    /* Board Area */
+    .board-wrapper {
+      position: relative;
+      background: rgba(22, 6, 40, 0.85);
+      padding: 12px;
+      border-radius: 24px;
+      border: 3px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(0, 0, 0, 0.7);
+    }
+
+    .board-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--board-size), var(--cell-size));
+      grid-template-rows: repeat(var(--board-size), var(--cell-size));
+      gap: var(--cell-gap);
+      position: relative;
+    }
+
+    .tile-slot {
+      width: var(--cell-size);
+      height: var(--cell-size);
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 14px;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+      position: relative;
+    }
+
+    .tile-slot:nth-child(even) {
+      background: rgba(255, 255, 255, 0.09);
+    }
+
+    /* Candy Element */
+    .candy {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: var(--cell-size);
+      height: var(--cell-size);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      touch-action: none;
+      transition: transform 0.22s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.2s ease;
+      z-index: 3;
+    }
+
+    .candy-inner {
+      width: 88%;
+      height: 88%;
+      border-radius: 50%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 -4px 6px rgba(0, 0, 0, 0.35), inset 0 4px 6px rgba(255, 255, 255, 0.6);
+      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .candy:hover .candy-inner {
+      transform: scale(1.08);
+    }
+
+    /* Candy Selected Ring */
+    .candy.selected .candy-inner {
+      transform: scale(1.15);
+      box-shadow: 0 0 15px 4px #ffe600, 0 4px 10px rgba(0, 0, 0, 0.5), inset 0 4px 8px rgba(255, 255, 255, 0.8);
+      animation: pulseSelection 1s infinite alternate;
+      z-index: 10;
+    }
+
+    .candy.hint-highlight .candy-inner {
+      animation: hintWiggle 0.8s infinite ease-in-out;
+    }
+
+    @keyframes hintWiggle {
+      0% { transform: scale(1.1) rotate(0deg); filter: drop-shadow(0 0 8px #00f2fe); }
+      25% { transform: scale(1.18) rotate(-10deg); filter: drop-shadow(0 0 14px #ffe600); }
+      75% { transform: scale(1.18) rotate(10deg); filter: drop-shadow(0 0 14px #ffe600); }
+      100% { transform: scale(1.1) rotate(0deg); filter: drop-shadow(0 0 8px #00f2fe); }
+    }
+
+    @keyframes pulseSelection {
+      0% { filter: brightness(1); }
+      100% { filter: brightness(1.25); }
+    }
+
+    /* Candy Color Styles & Shapes */
+    /* 0: Red Bean */
+    .candy-type-0 .candy-inner {
+      background: radial-gradient(circle at 35% 30%, #ff758c 0%, #ff1744 60%, #b70025 100%);
+      border-radius: 46%;
+    }
+
+    /* 1: Blue Gem / Drop */
+    .candy-type-1 .candy-inner {
+      background: radial-gradient(circle at 35% 30%, #68d8d6 0%, #0099ff 55%, #004ecc 100%);
+      border-radius: 28% 72% 70% 30% / 30% 30% 70% 70%;
+    }
+
+    /* 2: Green Lozenge */
+    .candy-type-2 .candy-inner {
+      background: radial-gradient(circle at 35% 30%, #98f598 0%, #00c853 60%, #00600f 100%);
+      border-radius: 20px;
+    }
+
+    /* 3: Lemon Drop */
+    .candy-type-3 .candy-inner {
+      background: radial-gradient(circle at 35% 30%, #fff799 0%, #ffd600 60%, #ff8f00 100%);
+      border-radius: 50% 15% 50% 15%;
+    }
+
+    /* 4: Orange Round */
+    .candy-type-4 .candy-inner {
+      background: radial-gradient(circle at 35% 30%, #ffbe76 0%, #ff6f00 65%, #c43e00 100%);
+      border-radius: 50%;
+    }
+
+    /* 5: Grape Plum / Heart */
+    .candy-type-5 .candy-inner {
+      background: radial-gradient(circle at 35% 30%, #e056fd 0%, #9c27b0 65%, #4a0072 100%);
+      border-radius: 40% 40% 50% 50%;
+    }
+
+    /* Candy Specular Highlight */
+    .candy-inner::before {
+      content: '';
+      position: absolute;
+      top: 10%;
+      left: 15%;
+      width: 32%;
+      height: 22%;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 50%;
+      transform: rotate(-30deg);
+      pointer-events: none;
+    }
+
+    /* Special Candy: Striped (Horizontal) */
+    .candy.special-h-striped .candy-inner::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(255, 255, 255, 0.85) 0px,
+        rgba(255, 255, 255, 0.85) 5px,
+        transparent 5px,
+        transparent 10px
+      );
+      mix-blend-mode: overlay;
+    }
+
+    /* Special Candy: Striped (Vertical) */
+    .candy.special-v-striped .candy-inner::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.85) 0px,
+        rgba(255, 255, 255, 0.85) 5px,
+        transparent 5px,
+        transparent 10px
+      );
+      mix-blend-mode: overlay;
+    }
+
+    /* Special Candy: Wrapped */
+    .candy.special-wrapped .candy-inner {
+      border: 3px dashed #ffffff;
+      box-shadow: 0 0 12px 2px #fff, inset 0 0 8px #fff;
+    }
+
+    /* Special Candy: Rainbow Color Bomb */
+    .candy.special-bomb .candy-inner {
+      background: radial-gradient(circle at 30% 30%, #555 0%, #151515 70%, #000 100%);
+      border-radius: 50%;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.8);
+      position: relative;
+      animation: bombShine 2s infinite linear;
+    }
+
+    .candy.special-bomb .candy-inner::after {
+      content: '★';
+      font-size: 1.4rem;
+      font-weight: 900;
+      background: linear-gradient(45deg, #ff007f, #ffe600, #00f2fe, #7b2ff7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: spinStars 3s infinite linear;
+    }
+
+    @keyframes spinStars {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes bombShine {
+      0% { filter: drop-shadow(0 0 4px #ff007f); }
+      33% { filter: drop-shadow(0 0 8px #00f2fe); }
+      66% { filter: drop-shadow(0 0 8px #ffe600); }
+      100% { filter: drop-shadow(0 0 4px #ff007f); }
+    }
+
+    /* Matched Burst Animation */
+    .candy.popping {
+      animation: popOut 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    @keyframes popOut {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.9; filter: brightness(1.7); }
+      100% { transform: scale(0); opacity: 0; }
+    }
+
+    /* Floating Score Popups */
+    .score-popup {
+      position: absolute;
+      color: #ffe600;
+      font-size: 1.3rem;
+      font-weight: 900;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px #ff007f;
+      pointer-events: none;
+      z-index: 100;
+      transform: translate(-50%, -50%);
+      animation: floatUpFade 0.85s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+    }
+
+    .score-popup.banner {
+      font-size: 1.8rem;
+      color: #fff;
+      text-shadow: 0 0 16px #ff00ea, 0 3px 6px #000;
+    }
+
+    @keyframes floatUpFade {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, 0) scale(0.6);
+      }
+      20% {
+        opacity: 1;
+        transform: translate(-50%, -15px) scale(1.2);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -55px) scale(0.9);
+      }
+    }
+
+    /* Particle Canvas overlay */
+    #fxCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 50;
+      border-radius: 24px;
+    }
+
+    /* Modal / Popups */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(14, 3, 30, 0.82);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal-box {
+      background: linear-gradient(180deg, #3f196b 0%, #1f0b38 100%);
+      border: 3px solid #ff75c3;
+      border-radius: 28px;
+      padding: 32px 28px;
+      text-align: center;
+      max-width: 360px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(255, 117, 195, 0.4);
+      transform: scale(0.85);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .modal-overlay.active .modal-box {
+      transform: scale(1);
+    }
+
+    .modal-title {
+      font-size: 2.2rem;
+      font-weight: 900;
+      margin-bottom: 10px;
+      background: linear-gradient(180deg, #ffe600 0%, #ff5252 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .modal-message {
+      font-size: 1.05rem;
+      color: #ffd8ec;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .modal-stats {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-around;
+    }
+
+    .modal-stat-val {
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: #ffe600;
+    }
+
+    .modal-stat-lbl {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: #ccc;
+    }
+
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-actions .btn {
+      padding: 12px;
+      font-size: 1.05rem;
+      justify-content: center;
+    }
+
+    /* Notification banner (e.g. Shuffling) */
+    .toast-banner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.7);
+      background: rgba(0, 0, 0, 0.85);
+      border: 2px solid #ffe600;
+      color: #ffe600;
+      padding: 14px 28px;
+      border-radius: 30px;
+      font-size: 1.4rem;
+      font-weight: 900;
+      box-shadow: 0 0 25px rgba(255, 230, 0, 0.6);
+      pointer-events: none;
+      opacity: 0;
+      z-index: 200;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .toast-banner.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  </style>
+</head>
+<body>
+  <!-- Floating background candies -->
+  <div class="bg-candy" style="top: 8%; left: 6%; font-size: 40px;">🍬</div>
+  <div class="bg-candy" style="top: 75%; left: 10%; font-size: 55px; animation-delay: -3s;">🍭</div>
+  <div class="bg-candy" style="top: 20%; right: 8%; font-size: 45px; animation-delay: -7s;">🍫</div>
+  <div class="bg-candy" style="top: 80%; right: 12%; font-size: 50px; animation-delay: -10s;">🍩</div>
+
+  <div class="game-container">
+    <!-- Game Title -->
+    <div class="title-banner">
+      <span>🍭</span>
+      <h1>Candy Crush</h1>
+      <span>🍬</span>
+    </div>
+
+    <!-- HUD Stats Bar -->
+    <div class="hud-card">
+      <div class="hud-stat">
+        <span class="hud-label">Level</span>
+        <span id="levelDisplay" class="hud-value">1</span>
+      </div>
+
+      <div class="target-bar-wrap">
+        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 800;">
+          <span style="color: #ffd8ec;">SCORE</span>
+          <span><span id="scoreDisplay" style="color: #ffe600;">0</span> / <span id="targetDisplay">1500</span></span>
+        </div>
+        <div class="target-bar-track">
+          <div id="targetFill" class="target-bar-fill"></div>
+        </div>
+      </div>
+
+      <div class="hud-stat">
+        <span class="hud-label">Moves</span>
+        <span id="movesDisplay" class="hud-value" style="color: #ff5e9c;">20</span>
+      </div>
+    </div>
+
+    <!-- Controls Row -->
+    <div class="controls-row">
+      <button id="btnRestart" class="btn" title="Restart Game">
+        🔄 <span>Restart</span>
+      </button>
+
+      <div style="display: flex; gap: 8px;">
+        <button id="btnHint" class="btn btn-secondary" title="Show Hint">
+          💡 <span>Hint</span>
+        </button>
+        <button id="btnSound" class="btn btn-secondary btn-icon-only" title="Toggle Sound">
+          🔊
+        </button>
+      </div>
+    </div>
+
+    <!-- Game Board -->
+    <div class="board-wrapper">
+      <canvas id="fxCanvas"></canvas>
+      <div id="boardGrid" class="board-grid"></div>
+      <div id="toastBanner" class="toast-banner">Shuffling Candies!</div>
+    </div>
+  </div>
+
+  <!-- End Game Modal -->
+  <div id="gameModal" class="modal-overlay">
+    <div class="modal-box">
+      <div id="modalTitle" class="modal-title">Sweet Victory!</div>
+      <div id="modalMsg" class="modal-message">You hit the target score with moves to spare!</div>
+      <div class="modal-stats">
+        <div>
+          <div id="modalScore" class="modal-stat-val">2450</div>
+          <div class="modal-stat-lbl">Final Score</div>
+        </div>
+        <div>
+          <div id="modalBest" class="modal-stat-val">3200</div>
+          <div class="modal-stat-lbl">High Score</div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="modalActionBtn" class="btn">Next Level ➔</button>
+        <button id="modalRetryBtn" class="btn btn-secondary">Play Again 🔄</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       CANDY CRUSH ENGINE
+       ========================================================================== */
+    const BOARD_SIZE = 8;
+    const NUM_CANDY_TYPES = 6;
+
+    // Special candy flag constants
+    const SPECIAL_NONE = 'none';
+    const SPECIAL_H_STRIPE = 'h_stripe';
+    const SPECIAL_V_STRIPE = 'v_stripe';
+    const SPECIAL_WRAPPED = 'wrapped';
+    const SPECIAL_BOMB = 'bomb';
+
+    // Levels configuration
+    const LEVELS = [
+      { level: 1, target: 1200, moves: 22 },
+      { level: 2, target: 2000, moves: 20 },
+      { level: 3, target: 3200, moves: 20 },
+      { level: 4, target: 4500, moves: 18 },
+      { level: 5, target: 6000, moves: 18 }
+    ];
+
+    /* ==========================================================================
+       SYNTHESIZED SOUND ENGINE (Web Audio API)
+       ========================================================================== */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggle() {
+        this.enabled = !this.enabled;
+        return this.enabled;
+      }
+
+      playTone(freq, type, duration, gainStart = 0.25, gainEnd = 0.001) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+          gain.gain.setValueAtTime(gainStart, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(gainEnd, this.ctx.currentTime + duration);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {}
+      }
+
+      playSwap() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(540, this.ctx.currentTime + 0.12);
+
+          gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.12);
+        } catch (e) {}
+      }
+
+      playInvalid() {
+        this.playTone(180, 'triangle', 0.15, 0.2, 0.01);
+      }
+
+      playMatch(combo = 1) {
+        if (!this.enabled) return;
+        const baseFreqs = [330, 392, 440, 523, 587, 659, 784, 880];
+        const pitchIdx = Math.min(combo - 1, baseFreqs.length - 1);
+        const freq = baseFreqs[pitchIdx];
+
+        this.playTone(freq, 'sine', 0.25, 0.35, 0.001);
+        setTimeout(() => {
+          this.playTone(freq * 1.5, 'triangle', 0.2, 0.2, 0.001);
+        }, 50);
+      }
+
+      playSpecialCreate() {
+        if (!this.enabled) return;
+        [523, 659, 784, 1046].forEach((f, idx) => {
+          setTimeout(() => this.playTone(f, 'square', 0.18, 0.15, 0.001), idx * 60);
+        });
+      }
+
+      playSpecialBlast() {
+        if (!this.enabled) return;
+        this.playTone(120, 'sawtooth', 0.45, 0.4, 0.01);
+        setTimeout(() => this.playTone(480, 'sine', 0.3, 0.3, 0.01), 100);
+      }
+
+      playWin() {
+        if (!this.enabled) return;
+        const notes = [440, 554, 659, 880];
+        notes.forEach((freq, idx) => {
+          setTimeout(() => this.playTone(freq, 'sine', 0.35, 0.3, 0.001), idx * 120);
+        });
+      }
+
+      playGameOver() {
+        if (!this.enabled) return;
+        const notes = [440, 415, 392, 349];
+        notes.forEach((freq, idx) => {
+          setTimeout(() => this.playTone(freq, 'triangle', 0.35, 0.25, 0.001), idx * 140);
+        });
+      }
+    }
+
+    /* ==========================================================================
+       PARTICLE & VISUAL EFFECTS ENGINE
+       ========================================================================== */
+    class FXEngine {
+      constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.particles = [];
+        this.lastTime = performance.now();
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        requestAnimationFrame((t) => this.loop(t));
+      }
+
+      resize() {
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        this.canvas.width = rect.width;
+        this.canvas.height = rect.height;
+      }
+
+      spawnMatchParticles(x, y, color = '#ffe600', count = 14) {
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = Math.random() * 5 + 2;
+          this.particles.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: Math.random() * 6 + 3,
+            color,
+            alpha: 1,
+            decay: Math.random() * 0.03 + 0.02,
+            shape: Math.random() > 0.5 ? 'circle' : 'star'
+          });
+        }
+      }
+
+      spawnBeam(r, c, isRow = true) {
+        // Special striped candy blast beam
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        const cellSize = rect.width / BOARD_SIZE;
+        const centerX = (c + 0.5) * cellSize;
+        const centerY = (r + 0.5) * cellSize;
+
+        const count = 35;
+        for (let i = 0; i < count; i++) {
+          if (isRow) {
+            this.particles.push({
+              x: Math.random() * rect.width,
+              y: centerY + (Math.random() * 16 - 8),
+              vx: (Math.random() - 0.5) * 6,
+              vy: (Math.random() - 0.5) * 2,
+              size: Math.random() * 5 + 2,
+              color: '#ffffff',
+              alpha: 1,
+              decay: 0.04,
+              shape: 'star'
+            });
+          } else {
+            this.particles.push({
+              x: centerX + (Math.random() * 16 - 8),
+              y: Math.random() * rect.height,
+              vx: (Math.random() - 0.5) * 2,
+              vy: (Math.random() - 0.5) * 6,
+              size: Math.random() * 5 + 2,
+              color: '#ffffff',
+              alpha: 1,
+              decay: 0.04,
+              shape: 'star'
+            });
+          }
+        }
+      }
+
+      loop(timestamp) {
+        const dt = (timestamp - this.lastTime) / 1000;
+        this.lastTime = timestamp;
+
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 2.5 * dt; // slight gravity
+          p.alpha -= p.decay;
+
+          if (p.alpha <= 0) {
+            this.particles.splice(i, 1);
+            continue;
+          }
+
+          this.ctx.save();
+          this.ctx.globalAlpha = p.alpha;
+          this.ctx.fillStyle = p.color;
+
+          if (p.shape === 'star') {
+            this.ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+          } else {
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2);
+            this.ctx.fill();
+          }
+          this.ctx.restore();
+        }
+
+        requestAnimationFrame((t) => this.loop(t));
+      }
+    }
+
+    /* ==========================================================================
+       MAIN GAME LOGIC
+       ========================================================================== */
+    class CandyCrushGame {
+      constructor() {
+        this.board = [];
+        this.candyElements = [];
+        this.selectedCandy = null;
+        this.isProcessing = false;
+
+        this.level = 1;
+        this.score = 0;
+        this.moves = 20;
+        this.target = 1500;
+        this.highScore = parseInt(localStorage.getItem('candy_high_score') || '0', 10);
+
+        this.sound = new SoundEngine();
+        this.fx = new FXEngine(document.getElementById('fxCanvas'));
+
+        // DOM elements
+        this.boardGridEl = document.getElementById('boardGrid');
+        this.scoreEl = document.getElementById('scoreDisplay');
+        this.targetEl = document.getElementById('targetDisplay');
+        this.movesEl = document.getElementById('movesDisplay');
+        this.levelEl = document.getElementById('levelDisplay');
+        this.targetFillEl = document.getElementById('targetFill');
+        this.toastBannerEl = document.getElementById('toastBanner');
+
+        // Modal elements
+        this.modalEl = document.getElementById('gameModal');
+        this.modalTitleEl = document.getElementById('modalTitle');
+        this.modalMsgEl = document.getElementById('modalMsg');
+        this.modalScoreEl = document.getElementById('modalScore');
+        this.modalBestEl = document.getElementById('modalBest');
+        this.modalActionBtn = document.getElementById('modalActionBtn');
+        this.modalRetryBtn = document.getElementById('modalRetryBtn');
+
+        // Pointer swipe tracking
+        this.dragStartPos = null;
+        this.dragCandy = null;
+
+        this.init();
+      }
+
+      init() {
+        this.createBoardSlots();
+        this.bindEvents();
+        this.startLevel(1);
+      }
+
+      createBoardSlots() {
+        this.boardGridEl.innerHTML = '';
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            const slot = document.createElement('div');
+            slot.classList.add('tile-slot');
+            slot.dataset.row = r;
+            slot.dataset.col = c;
+            this.boardGridEl.appendChild(slot);
+          }
+        }
+      }
+
+      bindEvents() {
+        document.getElementById('btnRestart').addEventListener('click', () => {
+          this.sound.playSwap();
+          this.startLevel(this.level);
+        });
+
+        document.getElementById('btnHint').addEventListener('click', () => {
+          this.showHint();
+        });
+
+        const soundBtn = document.getElementById('btnSound');
+        soundBtn.addEventListener('click', () => {
+          const isEnabled = this.sound.toggle();
+          soundBtn.innerHTML = isEnabled ? '🔊' : '🔇';
+        });
+
+        this.modalActionBtn.addEventListener('click', () => {
+          this.hideModal();
+          if (this.score >= this.target) {
+            this.startLevel(this.level + 1);
+          } else {
+            this.startLevel(this.level);
+          }
+        });
+
+        this.modalRetryBtn.addEventListener('click', () => {
+          this.hideModal();
+          this.startLevel(1);
+        });
+
+        // Global pointer up to clear drag tracking
+        window.addEventListener('pointerup', (e) => {
+          if (this.dragElement) {
+            try {
+              if (this.dragElement.hasPointerCapture(e.pointerId)) {
+                this.dragElement.releasePointerCapture(e.pointerId);
+              }
+            } catch (err) {}
+          }
+          this.dragStartPos = null;
+          this.dragCandy = null;
+          this.dragElement = null;
+        });
+
+        window.addEventListener('resize', () => {
+          this.fx.resize();
+          this.updateAllCandyPositions();
+        });
+      }
+
+      updateAllCandyPositions() {
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            const candy = this.board[r] && this.board[r][c];
+            if (candy && candy.element) {
+              this.updateCandyElementPosition(candy.element, r, c);
+            }
+          }
+        }
+      }
+
+      startLevel(lvlNumber) {
+        this.level = lvlNumber;
+        const config = LEVELS[Math.min(lvlNumber - 1, LEVELS.length - 1)];
+        this.target = config.target + (lvlNumber > LEVELS.length ? (lvlNumber - LEVELS.length) * 1500 : 0);
+        this.moves = config.moves;
+        this.score = 0;
+
+        this.updateHUD();
+        this.generateInitialBoard();
+      }
+
+      updateHUD() {
+        this.scoreEl.innerText = this.score;
+        this.targetEl.innerText = this.target;
+        this.movesEl.innerText = this.moves;
+        this.levelEl.innerText = this.level;
+
+        const progressPercent = Math.min(100, Math.floor((this.score / this.target) * 100));
+        this.targetFillEl.style.width = `${progressPercent}%`;
+
+        if (this.moves <= 5) {
+          this.movesEl.style.color = '#ff2a2a';
+        } else {
+          this.movesEl.style.color = '#ff5e9c';
+        }
+      }
+
+      generateInitialBoard() {
+        // Clear existing candy DOM nodes
+        this.candyElements.forEach(el => el.remove());
+        this.candyElements = [];
+
+        this.board = [];
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          this.board[r] = [];
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            let type;
+            do {
+              type = Math.floor(Math.random() * NUM_CANDY_TYPES);
+            } while (
+              (c >= 2 && this.board[r][c - 1].type === type && this.board[r][c - 2].type === type) ||
+              (r >= 2 && this.board[r - 1][c].type === type && this.board[r - 2][c].type === type)
+            );
+
+            this.board[r][c] = {
+              type: type,
+              special: SPECIAL_NONE,
+              row: r,
+              col: c,
+              id: `${r}-${c}-${Date.now()}-${Math.random()}`
+            };
+          }
+        }
+
+        // Verify that initial board has at least one valid move
+        if (!this.hasValidMoves()) {
+          this.generateInitialBoard();
+          return;
+        }
+
+        this.renderAllCandies();
+      }
+
+      renderAllCandies() {
+        this.candyElements.forEach(el => el.remove());
+        this.candyElements = [];
+
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            const data = this.board[r][c];
+            if (data) {
+              const el = this.createCandyElement(data);
+              this.boardGridEl.appendChild(el);
+              this.candyElements.push(el);
+              data.element = el;
+              this.updateCandyElementPosition(el, r, c);
+            }
+          }
+        }
+      }
+
+      createCandyElement(data) {
+        const el = document.createElement('div');
+        el.classList.add('candy', `candy-type-${data.type}`);
+        if (data.special === SPECIAL_H_STRIPE) el.classList.add('special-h-striped');
+        else if (data.special === SPECIAL_V_STRIPE) el.classList.add('special-v-striped');
+        else if (data.special === SPECIAL_WRAPPED) el.classList.add('special-wrapped');
+        else if (data.special === SPECIAL_BOMB) el.classList.add('special-bomb');
+
+        const inner = document.createElement('div');
+        inner.classList.add('candy-inner');
+        el.appendChild(inner);
+
+        // Click / Tap Handling
+        el.addEventListener('pointerdown', (e) => this.onCandyPointerDown(e, data));
+        el.addEventListener('pointermove', (e) => this.onCandyPointerMove(e, data));
+
+        return el;
+      }
+
+      updateCandyElementPosition(el, r, c) {
+        const style = getComputedStyle(document.documentElement);
+        const cellSize = parseFloat(style.getPropertyValue('--cell-size')) || 64;
+        const cellGap = parseFloat(style.getPropertyValue('--cell-gap')) || 8;
+
+        const x = c * (cellSize + cellGap);
+        const y = r * (cellSize + cellGap);
+        el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      }
+
+      onCandyPointerDown(e, candyData) {
+        if (this.isProcessing) return;
+        this.sound.init();
+
+        this.dragStartPos = { x: e.clientX, y: e.clientY };
+        this.dragCandy = candyData;
+        this.dragElement = e.currentTarget;
+
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch (err) {}
+
+        // If no candy selected currently, select this one
+        if (!this.selectedCandy) {
+          this.selectCandy(candyData);
+        } else if (this.selectedCandy === candyData) {
+          // Deselect
+          this.deselectCandy();
+        } else {
+          // Check if adjacent
+          if (this.isAdjacent(this.selectedCandy, candyData)) {
+            const first = this.selectedCandy;
+            this.deselectCandy();
+            this.attemptSwap(first, candyData);
+          } else {
+            // Select new candy
+            this.deselectCandy();
+            this.selectCandy(candyData);
+          }
+        }
+      }
+
+      onCandyPointerMove(e, candyData) {
+        if (!this.dragStartPos || this.isProcessing || this.dragCandy !== candyData) return;
+
+        const dx = e.clientX - this.dragStartPos.x;
+        const dy = e.clientY - this.dragStartPos.y;
+        const threshold = 18;
+
+        if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+          let targetRow = candyData.row;
+          let targetCol = candyData.col;
+
+          if (Math.abs(dx) > Math.abs(dy)) {
+            targetCol += dx > 0 ? 1 : -1;
+          } else {
+            targetRow += dy > 0 ? 1 : -1;
+          }
+
+          if (this.dragElement) {
+            try {
+              if (this.dragElement.hasPointerCapture(e.pointerId)) {
+                this.dragElement.releasePointerCapture(e.pointerId);
+              }
+            } catch (err) {}
+          }
+
+          this.dragStartPos = null;
+          this.dragCandy = null;
+          this.dragElement = null;
+
+          if (targetRow >= 0 && targetRow < BOARD_SIZE && targetCol >= 0 && targetCol < BOARD_SIZE) {
+            const targetCandy = this.board[targetRow][targetCol];
+            if (targetCandy) {
+              this.deselectCandy();
+              this.attemptSwap(candyData, targetCandy);
+            }
+          }
+        }
+      }
+
+      selectCandy(candyData) {
+        this.selectedCandy = candyData;
+        if (candyData.element) {
+          candyData.element.classList.add('selected');
+        }
+        this.sound.playSwap();
+        this.clearHint();
+      }
+
+      deselectCandy() {
+        if (this.selectedCandy && this.selectedCandy.element) {
+          this.selectedCandy.element.classList.remove('selected');
+        }
+        this.selectedCandy = null;
+      }
+
+      isAdjacent(c1, c2) {
+        const rowDiff = Math.abs(c1.row - c2.row);
+        const colDiff = Math.abs(c1.col - c2.col);
+        return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+      }
+
+      async attemptSwap(c1, c2) {
+        this.isProcessing = true;
+        this.sound.playSwap();
+
+        // Animate swap visually
+        await this.swapCandies(c1, c2);
+
+        // Check if swap is valid (creates match OR color bomb combo)
+        const isColorBombSwap = (c1.special === SPECIAL_BOMB || c2.special === SPECIAL_BOMB);
+        const matches = this.findMatches();
+
+        if (matches.length > 0 || isColorBombSwap) {
+          // Decrement move
+          this.moves--;
+          this.updateHUD();
+
+          if (isColorBombSwap) {
+            await this.handleColorBombSwap(c1, c2);
+          }
+
+          // Trigger cascade loop
+          await this.processBoardMatches();
+
+          // Check win / lose / shuffle conditions
+          this.checkGameStatus();
+        } else {
+          // Invalid swap: revert
+          this.sound.playInvalid();
+          await this.swapCandies(c1, c2);
+        }
+
+        this.isProcessing = false;
+      }
+
+      async swapCandies(c1, c2) {
+        const r1 = c1.row, c1Col = c1.col;
+        const r2 = c2.row, c2Col = c2.col;
+
+        // Swap in board data
+        this.board[r1][c1Col] = c2;
+        this.board[r2][c2Col] = c1;
+
+        c1.row = r2;
+        c1.col = c2Col;
+        c2.row = r1;
+        c2.col = c1Col;
+
+        // Animate elements
+        this.updateCandyElementPosition(c1.element, c1.row, c1.col);
+        this.updateCandyElementPosition(c2.element, c2.row, c2.col);
+
+        await this.delay(220);
+      }
+
+      async handleColorBombSwap(c1, c2) {
+        const bomb = c1.special === SPECIAL_BOMB ? c1 : c2;
+        const other = c1 === bomb ? c2 : c1;
+
+        this.sound.playSpecialBlast();
+        this.showScoreBanner("COLOR BOMB!", bomb.row, bomb.col);
+
+        let targets = [];
+        if (other.special === SPECIAL_BOMB) {
+          // Double Bomb: Clear the entire board!
+          for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+              if (this.board[r][c]) targets.push(this.board[r][c]);
+            }
+          }
+        } else {
+          // Clear all candies matching the other candy's type
+          const targetType = other.type;
+          targets.push(bomb);
+          for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+              const candy = this.board[r][c];
+              if (candy && candy.type === targetType) {
+                targets.push(candy);
+              }
+            }
+          }
+        }
+
+        await this.clearCandies(targets, 1);
+        await this.dropAndRefill();
+      }
+
+      findMatches() {
+        const matched = new Set();
+        const matchGroups = [];
+
+        // Check horizontal matches
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          let matchLength = 1;
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            const current = this.board[r][c];
+            const next = c < BOARD_SIZE - 1 ? this.board[r][c + 1] : null;
+
+            if (current && next && current.type === next.type && current.special !== SPECIAL_BOMB && next.special !== SPECIAL_BOMB) {
+              matchLength++;
+            } else {
+              if (matchLength >= 3) {
+                const group = [];
+                for (let k = 0; k < matchLength; k++) {
+                  const candy = this.board[r][c - k];
+                  group.push(candy);
+                  matched.add(candy);
+                }
+                matchGroups.push({ dir: 'h', candies: group });
+              }
+              matchLength = 1;
+            }
+          }
+        }
+
+        // Check vertical matches
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          let matchLength = 1;
+          for (let r = 0; r < BOARD_SIZE; r++) {
+            const current = this.board[r][c];
+            const next = r < BOARD_SIZE - 1 ? this.board[r + 1][c] : null;
+
+            if (current && next && current.type === next.type && current.special !== SPECIAL_BOMB && next.special !== SPECIAL_BOMB) {
+              matchLength++;
+            } else {
+              if (matchLength >= 3) {
+                const group = [];
+                for (let k = 0; k < matchLength; k++) {
+                  const candy = this.board[r - k][c];
+                  group.push(candy);
+                  matched.add(candy);
+                }
+                matchGroups.push({ dir: 'v', candies: group });
+              }
+              matchLength = 1;
+            }
+          }
+        }
+
+        return matchGroups;
+      }
+
+      async processBoardMatches() {
+        let combo = 1;
+
+        while (true) {
+          const matchGroups = this.findMatches();
+          if (matchGroups.length === 0) break;
+
+          // Determine candies to destroy and any special candies to spawn
+          const toDestroy = new Set();
+          const specialsToSpawn = [];
+
+          // Check intersection for T or L shapes -> Wrapped candy
+          const hMatchCandies = new Set();
+          const vMatchCandies = new Set();
+          matchGroups.filter(g => g.dir === 'h').forEach(g => g.candies.forEach(c => hMatchCandies.add(c)));
+          matchGroups.filter(g => g.dir === 'v').forEach(g => g.candies.forEach(c => vMatchCandies.add(c)));
+
+          const intersectionCandies = [...hMatchCandies].filter(c => vMatchCandies.has(c));
+
+          if (intersectionCandies.length > 0) {
+            const primaryCandy = intersectionCandies[0];
+            specialsToSpawn.push({
+              row: primaryCandy.row,
+              col: primaryCandy.col,
+              type: primaryCandy.type,
+              special: SPECIAL_WRAPPED
+            });
+          } else {
+            matchGroups.forEach(group => {
+              const len = group.candies.length;
+              const primaryCandy = group.candies[Math.floor(len / 2)];
+
+              if (len >= 5) {
+                // 5 in a row -> Rainbow Bomb
+                specialsToSpawn.push({
+                  row: primaryCandy.row,
+                  col: primaryCandy.col,
+                  type: primaryCandy.type,
+                  special: SPECIAL_BOMB
+                });
+              } else if (len === 4) {
+                // 4 in a row -> Striped Candy
+                const specialType = group.dir === 'h' ? SPECIAL_V_STRIPE : SPECIAL_H_STRIPE;
+                specialsToSpawn.push({
+                  row: primaryCandy.row,
+                  col: primaryCandy.col,
+                  type: primaryCandy.type,
+                  special: specialType
+                });
+              }
+            });
+          }
+
+          matchGroups.forEach(group => {
+            group.candies.forEach(candy => toDestroy.add(candy));
+          });
+
+          // Handle special candy blast triggers
+          const expandedDestroy = this.expandSpecialDestructions(Array.from(toDestroy));
+
+          // Sound & Popups
+          this.sound.playMatch(combo);
+          if (combo >= 3) {
+            this.showScoreBanner(combo >= 5 ? "TASTY!" : "SWEET!", BOARD_SIZE / 2, BOARD_SIZE / 2);
+          }
+
+          // Clear candies
+          await this.clearCandies(expandedDestroy, combo);
+
+          // Spawn new specials at their designated locations
+          specialsToSpawn.forEach(item => {
+            this.createSpecialAt(item.row, item.col, item.type, item.special);
+          });
+
+          // Drop and refill board
+          await this.dropAndRefill();
+
+          combo++;
+          await this.delay(120);
+        }
+      }
+
+      expandSpecialDestructions(candyList) {
+        const toProcess = [...candyList];
+        const allDestroyed = new Set(candyList);
+
+        while (toProcess.length > 0) {
+          const candy = toProcess.pop();
+
+          if (candy.special === SPECIAL_H_STRIPE) {
+            this.sound.playSpecialBlast();
+            this.fx.spawnBeam(candy.row, candy.col, true);
+            for (let c = 0; c < BOARD_SIZE; c++) {
+              const target = this.board[candy.row][c];
+              if (target && !allDestroyed.has(target)) {
+                allDestroyed.add(target);
+                toProcess.push(target);
+              }
+            }
+          } else if (candy.special === SPECIAL_V_STRIPE) {
+            this.sound.playSpecialBlast();
+            this.fx.spawnBeam(candy.row, candy.col, false);
+            for (let r = 0; r < BOARD_SIZE; r++) {
+              const target = this.board[r][candy.col];
+              if (target && !allDestroyed.has(target)) {
+                allDestroyed.add(target);
+                toProcess.push(target);
+              }
+            }
+          } else if (candy.special === SPECIAL_WRAPPED) {
+            // 3x3 blast
+            this.sound.playSpecialBlast();
+            for (let dr = -1; dr <= 1; dr++) {
+              for (let dc = -1; dc <= 1; dc++) {
+                const nr = candy.row + dr;
+                const nc = candy.col + dc;
+                if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE) {
+                  const target = this.board[nr][nc];
+                  if (target && !allDestroyed.has(target)) {
+                    allDestroyed.add(target);
+                    toProcess.push(target);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        return Array.from(allDestroyed);
+      }
+
+      async clearCandies(candies, combo) {
+        const pointsPerCandy = 20 * combo;
+        let pointsGained = 0;
+
+        const candyColors = ['#ff2a85', '#0099ff', '#00c853', '#ffd600', '#ff6f00', '#9c27b0'];
+
+        candies.forEach(candy => {
+          if (!candy || !candy.element) return;
+
+          // Spawn particle burst
+          const style = getComputedStyle(document.documentElement);
+          const cellSize = parseFloat(style.getPropertyValue('--cell-size')) || 64;
+          const cellGap = parseFloat(style.getPropertyValue('--cell-gap')) || 8;
+          const px = candy.col * (cellSize + cellGap) + cellSize / 2;
+          const py = candy.row * (cellSize + cellGap) + cellSize / 2;
+
+          this.fx.spawnMatchParticles(px, py, candyColors[candy.type] || '#fff');
+
+          // Add popping animation class
+          candy.element.classList.add('popping');
+
+          // Remove from board array
+          this.board[candy.row][candy.col] = null;
+          pointsGained += pointsPerCandy;
+        });
+
+        if (candies.length > 0) {
+          const first = candies[0];
+          this.showScorePopup(`+${pointsGained}`, first.row, first.col);
+        }
+
+        this.addScore(pointsGained);
+
+        await this.delay(260);
+
+        // Remove DOM nodes
+        candies.forEach(candy => {
+          if (candy && candy.element) {
+            candy.element.remove();
+            const idx = this.candyElements.indexOf(candy.element);
+            if (idx !== -1) this.candyElements.splice(idx, 1);
+          }
+        });
+      }
+
+      createSpecialAt(r, c, type, specialType) {
+        this.sound.playSpecialCreate();
+
+        const data = {
+          type: type,
+          special: specialType,
+          row: r,
+          col: c,
+          id: `${r}-${c}-${Date.now()}`
+        };
+
+        const el = this.createCandyElement(data);
+        this.boardGridEl.appendChild(el);
+        this.candyElements.push(el);
+        data.element = el;
+        this.board[r][c] = data;
+        this.updateCandyElementPosition(el, r, c);
+      }
+
+      async dropAndRefill() {
+        const style = getComputedStyle(document.documentElement);
+        const cellSize = parseFloat(style.getPropertyValue('--cell-size')) || 64;
+        const cellGap = parseFloat(style.getPropertyValue('--cell-gap')) || 8;
+
+        // Slide down existing candies
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          let emptyRow = BOARD_SIZE - 1;
+
+          for (let r = BOARD_SIZE - 1; r >= 0; r--) {
+            if (this.board[r][c] !== null) {
+              if (emptyRow !== r) {
+                const candy = this.board[r][c];
+                this.board[emptyRow][c] = candy;
+                this.board[r][c] = null;
+                candy.row = emptyRow;
+                this.updateCandyElementPosition(candy.element, candy.row, candy.col);
+              }
+              emptyRow--;
+            }
+          }
+
+          // Spawn new candies at the top for empty slots
+          let spawnYOffset = 1;
+          for (let r = emptyRow; r >= 0; r--) {
+            const newType = Math.floor(Math.random() * NUM_CANDY_TYPES);
+            const data = {
+              type: newType,
+              special: SPECIAL_NONE,
+              row: r,
+              col: c,
+              id: `${r}-${c}-${Date.now()}-${Math.random()}`
+            };
+
+            const el = this.createCandyElement(data);
+            this.boardGridEl.appendChild(el);
+            this.candyElements.push(el);
+            data.element = el;
+            this.board[r][c] = data;
+
+            // Start element off-screen above
+            const startX = c * (cellSize + cellGap);
+            const startY = -(spawnYOffset * (cellSize + cellGap));
+            el.style.transform = `translate3d(${startX}px, ${startY}px, 0)`;
+
+            // Force reflow and drop down
+            el.getBoundingClientRect();
+            this.updateCandyElementPosition(el, r, c);
+            spawnYOffset++;
+          }
+        }
+
+        await this.delay(260);
+      }
+
+      addScore(pts) {
+        this.score += pts;
+        if (this.score > this.highScore) {
+          this.highScore = this.score;
+          localStorage.setItem('candy_high_score', this.highScore);
+        }
+        this.updateHUD();
+
+        this.scoreEl.classList.add('highlight');
+        setTimeout(() => this.scoreEl.classList.remove('highlight'), 200);
+      }
+
+      showScorePopup(text, r, c) {
+        const style = getComputedStyle(document.documentElement);
+        const cellSize = parseFloat(style.getPropertyValue('--cell-size')) || 64;
+        const cellGap = parseFloat(style.getPropertyValue('--cell-gap')) || 8;
+
+        const x = c * (cellSize + cellGap) + cellSize / 2;
+        const y = r * (cellSize + cellGap) + cellSize / 2;
+
+        const popup = document.createElement('div');
+        popup.className = 'score-popup';
+        popup.innerText = text;
+        popup.style.left = `${x}px`;
+        popup.style.top = `${y}px`;
+
+        this.boardGridEl.appendChild(popup);
+        setTimeout(() => popup.remove(), 850);
+      }
+
+      showScoreBanner(text, r, c) {
+        const style = getComputedStyle(document.documentElement);
+        const cellSize = parseFloat(style.getPropertyValue('--cell-size')) || 64;
+        const cellGap = parseFloat(style.getPropertyValue('--cell-gap')) || 8;
+
+        const x = c * (cellSize + cellGap) + cellSize / 2;
+        const y = r * (cellSize + cellGap) + cellSize / 2;
+
+        const popup = document.createElement('div');
+        popup.className = 'score-popup banner';
+        popup.innerText = text;
+        popup.style.left = `${x}px`;
+        popup.style.top = `${y}px`;
+
+        this.boardGridEl.appendChild(popup);
+        setTimeout(() => popup.remove(), 1100);
+      }
+
+      hasValidMoves() {
+        return this.getPossibleMoves().length > 0;
+      }
+
+      getPossibleMoves() {
+        const possible = [];
+
+        // Check horizontal swaps
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE - 1; c++) {
+            if (this.wouldSwapMatch(r, c, r, c + 1)) {
+              possible.push({ r1: r, c1: c, r2: r, c2: c + 1 });
+            }
+          }
+        }
+
+        // Check vertical swaps
+        for (let r = 0; r < BOARD_SIZE - 1; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            if (this.wouldSwapMatch(r, c, r + 1, c)) {
+              possible.push({ r1: r, c1: c, r2: r + 1, c2: c });
+            }
+          }
+        }
+
+        return possible;
+      }
+
+      wouldSwapMatch(r1, c1, r2, c2) {
+        const cand1 = this.board[r1][c1];
+        const cand2 = this.board[r2][c2];
+        if (!cand1 || !cand2) return false;
+
+        // If either is a color bomb, it's always a valid move
+        if (cand1.special === SPECIAL_BOMB || cand2.special === SPECIAL_BOMB) return true;
+
+        // Simulate swap in board
+        this.board[r1][c1] = cand2;
+        this.board[r2][c2] = cand1;
+
+        const matches = this.findMatches();
+
+        // Revert swap
+        this.board[r1][c1] = cand1;
+        this.board[r2][c2] = cand2;
+
+        return matches.length > 0;
+      }
+
+      showHint() {
+        this.clearHint();
+        const moves = this.getPossibleMoves();
+        if (moves.length > 0) {
+          const m = moves[Math.floor(Math.random() * moves.length)];
+          const c1 = this.board[m.r1][m.c1];
+          const c2 = this.board[m.r2][m.c2];
+          if (c1 && c1.element) c1.element.classList.add('hint-highlight');
+          if (c2 && c2.element) c2.element.classList.add('hint-highlight');
+
+          setTimeout(() => this.clearHint(), 3000);
+        }
+      }
+
+      clearHint() {
+        document.querySelectorAll('.hint-highlight').forEach(el => el.classList.remove('hint-highlight'));
+      }
+
+      async checkGameStatus() {
+        // Victory condition: Target score reached
+        if (this.score >= this.target) {
+          this.sound.playWin();
+          this.showModal(
+            "Sugar Star!",
+            `Awesome! You crushed Level ${this.level} with ${this.moves} moves left!`,
+            "Next Level ➔"
+          );
+          return;
+        }
+
+        // Out of moves
+        if (this.moves <= 0) {
+          this.sound.playGameOver();
+          this.showModal(
+            "Out of Moves!",
+            `You needed ${this.target - this.score} more points to reach the target.`,
+            "Try Again 🔄"
+          );
+          return;
+        }
+
+        // Check if any valid moves exist
+        if (!this.hasValidMoves()) {
+          this.toastBannerEl.classList.add('show');
+          await this.delay(1200);
+          this.shuffleBoard();
+          this.toastBannerEl.classList.remove('show');
+        }
+      }
+
+      shuffleBoard() {
+        const candies = [];
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            if (this.board[r][c]) {
+              candies.push({
+                type: this.board[r][c].type,
+                special: this.board[r][c].special
+              });
+            }
+          }
+        }
+
+        // Shuffle candies array
+        for (let i = candies.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [candies[i], candies[j]] = [candies[j], candies[i]];
+        }
+
+        let idx = 0;
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            const current = this.board[r][c];
+            const data = candies[idx++];
+            current.type = data.type;
+            current.special = data.special;
+
+            // Re-render element
+            current.element.className = 'candy';
+            current.element.classList.add(`candy-type-${current.type}`);
+            if (current.special === SPECIAL_H_STRIPE) current.element.classList.add('special-h-striped');
+            else if (current.special === SPECIAL_V_STRIPE) current.element.classList.add('special-v-striped');
+            else if (current.special === SPECIAL_WRAPPED) current.element.classList.add('special-wrapped');
+            else if (current.special === SPECIAL_BOMB) current.element.classList.add('special-bomb');
+          }
+        }
+
+        if (!this.hasValidMoves() || this.findMatches().length > 0) {
+          this.shuffleBoard();
+        }
+      }
+
+      showModal(title, msg, actionText) {
+        this.modalTitleEl.innerText = title;
+        this.modalMsgEl.innerText = msg;
+        this.modalScoreEl.innerText = this.score;
+        this.modalBestEl.innerText = this.highScore;
+        this.modalActionBtn.innerText = actionText;
+        this.modalEl.classList.add('active');
+      }
+
+      hideModal() {
+        this.modalEl.classList.remove('active');
+      }
+
+      delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+      }
+    }
+
+    // Launch game when DOM is loaded
+    window.addEventListener('DOMContentLoaded', () => {
+      new CandyCrushGame();
+    });
+  </script>
+</body>
+</html>
